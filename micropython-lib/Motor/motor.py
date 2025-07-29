@@ -3,7 +3,6 @@ import rp2
 import time
 
 class PID():
-
     def __init__(self,
                  kp = 1.0,
                  ki = 0.0,
@@ -95,7 +94,7 @@ class PID():
     
     def is_done(self) -> bool:
         return self.times >= self.tolerance_count
-    
+
     def clear_history(self):
         self.prev_error = 0
         self.prev_integral = 0
@@ -103,49 +102,13 @@ class PID():
         self.prev_time = None
         self.times = 0
 
-class Motor:
-    def __init__(self, in1_pwm_forward: int|str, in2_pwm_backward: int|str, flip_dir:bool=False, PWM_frequency: int = 50):
-        self.flip_dir = flip_dir
-        self._MAX_PWM = 65535
-        self._pwm_fwd = PWM(Pin(in1_pwm_forward, Pin.OUT))
-        self._pwm_rev = PWM(Pin(in2_pwm_backward, Pin.OUT))
-        self._pwm_fwd.freq(PWM_frequency)
-        self._pwm_rev.freq(PWM_frequency)
-
-    def set_effort(self, effort: float): #sentido da direção da roda
-        
-        effort = max(min(effort, 1.0), -1.0)  # Limita de -1 a 1
-
-        # Inverte direção, se necessário
-        if self.flip_dir:
-            effort = -effort
-
-        pwm_value = int(abs(effort) * self._MAX_PWM)
-
-        if effort > 0:
-            self._pwm_fwd.duty_u16(pwm_value)
-            self._pwm_rev.duty_u16(0)
-        elif effort < 0:
-            self._pwm_fwd.duty_u16(0)
-            self._pwm_rev.duty_u16(pwm_value)
-        else:
-            self.coast()
-
-    def brake(self): #aplica tensão por completo no motor
-        self._pwm_fwd.duty_u16(int(self._MAX_PWM))
-        self._pwm_rev.duty_u16(int(self._MAX_PWM))
-
-    def coast(self): #desativa por completo a tensão no motor
-        self._pwm_fwd.duty_u16(int(0))
-        self._pwm_rev.duty_u16(int(0))
-
-class Encoder:
+class _Encoder:
     _gear_ratio = 45 # (30/14) * (28/16) * (36/9) * (26/8) # 48.75
     _counts_per_motor_shaft_revolution = 53 #12
     resolution = _counts_per_motor_shaft_revolution * _gear_ratio
     
     def __init__(self, index, encAPin: int|str, encBPin: int|str):
-
+        
         basePin = Pin(min(encAPin, encBPin), Pin.IN)
         nextPin = Pin(max(encAPin, encBPin), Pin.IN)
         self.sm = rp2.StateMachine(index, self._encoder, in_base=basePin)
@@ -226,10 +189,47 @@ class Encoder:
         jmp("read")
         jmp("read")
         
+
+class Motor:
+    def __init__(self, in1_pwm_forward: int|str, in2_pwm_backward: int|str, flip_dir:bool=False, PWM_frequency: int = 50):
+        self.flip_dir = flip_dir
+        self._MAX_PWM = 65535
+        self._pwm_fwd = PWM(Pin(in1_pwm_forward, Pin.OUT))
+        self._pwm_rev = PWM(Pin(in2_pwm_backward, Pin.OUT))
+        self._pwm_fwd.freq(PWM_frequency)
+        self._pwm_rev.freq(PWM_frequency)
+
+    def set_effort(self, effort: float): #sentido da direção da roda
+        
+        effort = max(min(effort, 1.0), -1.0)  # Limita de -1 a 1
+
+        # Inverte direção, se necessário
+        if self.flip_dir:
+            effort = -effort
+
+        pwm_value = int(abs(effort) * self._MAX_PWM)
+
+        if effort > 0:
+            self._pwm_fwd.duty_u16(pwm_value)
+            self._pwm_rev.duty_u16(0)
+        elif effort < 0:
+            self._pwm_fwd.duty_u16(0)
+            self._pwm_rev.duty_u16(pwm_value)
+        else:
+            self.coast()
+
+    def brake(self): #aplica tensão por completo no motor
+        self._pwm_fwd.duty_u16(int(self._MAX_PWM))
+        self._pwm_rev.duty_u16(int(self._MAX_PWM))
+
+    def coast(self): #desativa por completo a tensão no motor
+        self._pwm_fwd.duty_u16(int(0))
+        self._pwm_rev.duty_u16(int(0))
+
 class EncodedMotor:
-    def __init__(self, motor: Motor, encoder: Encoder):
+    def __init__(self, motor: Motor, index, encAPin: int|str, encBPin: int|str):
         self._motor = motor
-        self._encoder = encoder
+        self._encoder = _Encoder(index, encAPin, encBPin)
         self.brake_at_zero = True
 
         self.speedController = PID(
@@ -242,6 +242,7 @@ class EncodedMotor:
         self.target_speed = None
         self.prev_position = 0
         self.speed = 0
+
 
         self.updateTimer = Timer(-1)
         self.updateTimer.init(period=20, callback=lambda t: self._update())
@@ -265,12 +266,10 @@ class EncodedMotor:
         self._motor.coast()
         self.updateTimer.deinit()
 
-    @property
     def get_position(self) -> float:
         invert = -1 if self._motor.flip_dir else 1
         return self._encoder.get_position() * invert
     
-    @property
     def get_position_counts(self) -> int:
         invert = -1 if self._motor.flip_dir else 1
         return self._encoder.get_position_counts() * invert
@@ -291,8 +290,18 @@ class EncodedMotor:
             # Convert from RPM to counts por 20ms (50Hz loop)
             self.target_speed = speed_rpm * self._encoder.resolution / (60 * 50)
 
-    def set_speed_controller(self, new_controller: PID):
-        self.speedController = new_controller
+    def set_speed_controller(self, kp=0.035,
+                 ki=0.03,
+                 kd=0,
+                 min_output = 0.0,
+                 max_output = 1.0,
+                 max_derivative = None,
+                 max_integral = 50,
+                 tolerance = 0.1,
+                 tolerance_count = 1):
+        
+        self.speedController = PID(kp,ki,kd,min_output,max_output,max_derivative,max_integral,tolerance,tolerance_count)
+        
         self.speedController.clear_history()
 
     def _update(self):
