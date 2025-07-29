@@ -1,0 +1,8 @@
+[tool.poetry.dependencies]
+python = "^3.8"
+typer = "^0.16.0"
+mpy-cross = "^1.25.0"
+pyyaml = "^6.0.0"
+requests = "^2.32.4"
+pyserial = "^3.5"
+mpremote = "^1.25.0"
