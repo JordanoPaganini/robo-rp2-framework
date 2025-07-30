@@ -19,7 +19,7 @@ MAIN_FILE = Path("main.py")
 # --- Configuração da Biblioteca 'robot-kit' ---
 ROBOT_KIT_GITHUB_URL = "https://github.com/JordanoPaganini/robo-rp2-framework"
 ROBOT_KIT_REPO_PATH = "micropython-lib"
-ROBOT_KIT_DOWNLOAD_DIR = Path("robot_kit")
+ROBOT_KIT_DOWNLOAD_DIR = Path("robotkit")
 
 
 def _parse_github_url(url: str) -> tuple[str, str] | None:
@@ -107,10 +107,10 @@ def run(
     requirements = config.get("requirements", {})
 
     # Baixar robot-kit se necessário
-    if requirements.get("robot-kit"):
+    if requirements.get("robotkit"):
 
-        if not (BUILD_DIR / 'robot_kit').exists() or download_lib:
-            typer.echo("\nDependência 'robot-kit' encontrada, baixando online.")
+        if not (BUILD_DIR / 'robotkit').exists() or download_lib:
+            typer.echo("\nDependência 'robotkit' encontrada, baixando online.")
             if ROBOT_KIT_DOWNLOAD_DIR.exists():
                 shutil.rmtree(ROBOT_KIT_DOWNLOAD_DIR)
 
@@ -124,9 +124,9 @@ def run(
 
             kit_files = list(ROBOT_KIT_DOWNLOAD_DIR.rglob("*.py"))
 
-            if Path('robot_kit/main.py')in kit_files:
+            if Path('robotkit/main.py')in kit_files:
                 shutil.copy(ROBOT_KIT_DOWNLOAD_DIR / "main.py", BUILD_DIR / "main.py")
-                kit_files.remove(Path('robot_kit/main.py'))
+                kit_files.remove(Path('robotkit/main.py'))
 
             files_to_compile.extend(kit_files)
             typer.secho(f"   FINISH! 'robot-kit' baixado com sucesso.", fg=typer.colors.GREEN)

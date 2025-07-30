@@ -16,6 +16,9 @@ setup(
         'pyyaml',
         'requests',
         'pyserial',
-        'mpremote'
+        'mpremote',
+        'beautifulsoup4',
+        'psutil',
+        'tqdm',
     ],
 )

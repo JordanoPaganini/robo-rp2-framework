@@ -8,7 +8,7 @@ from typing_extensions import Annotated
 FILES = {
     'main.py': textwrap.dedent("""
         # main.py
-        import robot_kit
+        import robotkit
         import machine
 
         # --- Escreva seu código aqui ---
@@ -18,7 +18,7 @@ FILES = {
         # project.yaml
 
         requirements:
-            robot-kit: true
+            robotkit: true
             others: 
                 # Adiciona outras bibliotecas de terceiros de /libs
                 # - <file_name>.py

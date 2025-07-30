@@ -45,11 +45,11 @@ def _clear_flash(port: str, baudrate: int) -> bool:
             time.sleep(0.2)
             
             for line in cleanup_script.splitlines():
-                print(line)
                 ser.write(line.encode('utf-8') + b'\r\n')
                 time.sleep(0.05)
-
-            ser.write(b"\x04")  # CTRL-D para finalizar o modo paste e executar
+            
+            ser.write(b"\x0d")  # Enter para finalizar o modo paste e executar
+            ser.write(b"\x04")  # CTRL-D para dar um soft-rebot
             time.sleep(1)
 
             # Lê a resposta
@@ -59,13 +59,12 @@ def _clear_flash(port: str, baudrate: int) -> bool:
                 time.sleep(0.25)
 
             if b"LIMPEZA_CONCLUIDA" in output:
-                print("aaaaaaaa")
                 return True
             else:
-                print(output.decode(errors="ignore")) # For debug
+                #print(output.decode(errors="ignore")) # For debug
                 return False
     except Exception as e:
-        print(e) # For debug
+        #print(e) # For debug
         return False
 
 def run(
@@ -139,7 +138,6 @@ def run(
         except typer.Exit:
             typer.secho("O processo de clear falhou. Deploy abortado.", fg=typer.colors.RED)
             raise typer.Exit(code=1)
-        exit(0)
 
     # 5. Copia os arquivos para o dispositivo usando mpremote
     typer.echo(f"\nIniciando a cópia dos arquivos de '{BUILD_DIR}' para o dispositivo...")
